@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>سجل الورديات</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f5f1;--card:#fff;--tx:#1d1d1b;--mut:#6b6a66;--bd:#e2e0d8;--ac:#be185d;--act:#fff;--ch:#fce7f3;--dg:#b42318;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161615;--card:#222221;--tx:#f1f0ec;--mut:#a3a29c;--bd:#37362f;--ac:#f472b6;--act:#3b0a22;--ch:#4a1d33;--dg:#f87171;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161615;--card:#222221;--tx:#f1f0ec;--mut:#a3a29c;--bd:#37362f;--ac:#f472b6;--act:#3b0a22;--ch:#4a1d33;--dg:#f87171;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;max-width:640px;margin-inline:auto;padding:14px}
+h1{font-size:19px;margin:2px 0 10px}
+h2{font-size:15px;margin:0 0 8px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding:4px 0;z-index:5}
+.tabs button{flex:1;padding:9px 2px;font-size:13px;background:var(--card);color:var(--tx);border:1px solid var(--bd)}
+.tabs button.on{background:var(--ac);color:var(--act);border-color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:12px}
+input,select,textarea{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:9px;max-width:100%}
+input[type=text],input[type=password],textarea{width:100%}
+button{font:inherit;border:0;border-radius:10px;padding:9px 12px;background:var(--ac);color:var(--act);cursor:pointer;font-weight:600}
+button.s{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+button.d{background:transparent;color:var(--dg);padding:4px 8px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+.row>*{flex:1;min-width:0}
+.row>.f0{flex:0 0 auto}
+.chip{display:inline-flex;gap:4px;align-items:center;background:var(--ch);border-radius:99px;padding:4px 10px;margin:3px;font-size:14px}
+.chk{display:inline-flex;align-items:center;gap:3px;margin:3px 0 3px 8px;font-size:14px}
+.chk input{width:auto}
+.m{color:var(--mut);font-size:12px}
+.ln{border-top:1px solid var(--bd);padding:8px 0}
+.ln:first-child{border-top:0}
+a.btn{text-align:center;text-decoration:none;background:var(--ch);color:var(--tx);border-radius:10px;padding:9px 12px;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px}
+.r th,.r td{padding:7px 5px;border-bottom:1px solid var(--bd);text-align:start;white-space:nowrap}
+.r th{color:var(--mut)}
+.tb th,.tb td{border:1px solid var(--bd);padding:6px 4px;text-align:center;vertical-align:middle;min-width:64px}
+.tb th{background:var(--ch)}
+.tdc{cursor:pointer}
+.ov{background:var(--ch)}
+.sb{color:var(--ac)}
+#msg{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom,0px));inset-inline:16px;margin-inline:auto;max-width:400px;background:var(--tx);color:var(--bg);padding:10px 14px;border-radius:10px;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9}
+#msg.on{opacity:1}
+</style>
+</head>
+<body>
+<h1>سجل الورديات — النساء والتوليد</h1>
+<div class="tabs" id="tabs"></div>
+<div id="v"></div>
+<div id="msg"></div>
+<script>
+const KEY="nurse_v1",$=id=>document.getElementById(id);
+const DN=["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+const D0={nurses:[],shifts:[{id:"a",n:"صباحي",s:"07:00",e:"14:00"},{id:"b",n:"مسائي",s:"14:00",e:"21:00"},{id:"c",n:"ليلي",s:"21:00",e:"07:00"}],hol:{},ov:{},hs:"07:00",he:"19:00",hk:3,cc:""};
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function ds(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function pd(s){return new Date(s+"T00:00:00")}
+function add(s,n){const d=pd(s);d.setDate(d.getDate()+n);return ds(d)}
+function sun(s){return add(s,-pd(s).getDay())}
+let S=clone(D0),tab="n",en=null,dr=null,qs="",rq={f:"",t:"",s:""},wk=sun(ds(new Date())),hmn=ds(new Date()).slice(0,7),gm=hmn,gc=3,ed=null;
+const fd=s=>pd(s).toLocaleDateString("ar",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+const fd2=s=>pd(s).toLocaleDateString("ar",{day:"numeric",month:"short",year:"numeric"});
+const fs=s=>pd(s).toLocaleDateString("ar",{day:"numeric",month:"short"});
+function toast(t){const m=$("msg");m.textContent=t;m.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>m.classList.remove("on"),2200)}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const nm=id=>(S.nurses.find(n=>n.id===id)||{name:"(محذوف)"}).name;
+const shn=id=>(S.shifts.find(s=>s.id===id)||{n:"؟"}).n;
+const dg=s=>String(s||"").replace(/\D/g,"");
+function wa(s){let d=dg(s);if(String(s).trim().startsWith("00"))d=d.slice(2);else if(d[0]==="0"&&S.cc)d=dg(S.cc)+d.slice(1);return d}
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+const act=(n,d)=>(!n.js||n.js<=d)&&(!n.je||n.je>=d);
+function upd(key,fn){const a=fn(S.ov[key]||[]);if(a.length)S.ov[key]=a;else delete S.ov[key]}
+
+/* ---- الجدول الأساسي + التعديلات ---- */
+function base(d,sh){const w=pd(d).getDay();
+  if(sh==="h")return(S.hol[d]||[]).slice();
+  return S.nurses.filter(n=>n.type==="d"&&n.shift===sh&&(n.days||[]).includes(w)&&act(n,d)).map(n=>n.id)}
+function cells(d,sh){const a=S.ov[d+"|"+sh]||[],c=base(d,sh).map(o=>({o,e:a.find(x=>x.o===o)}));a.filter(x=>!x.o).forEach(x=>c.push({x:x.s,mv:x.mv}));return c}
+function tdc(d,sh,c){const at=`data-a="ce" data-d="${d}" data-s="${sh}" `;
+  if(c.o){const e=c.e;if(!e)return `<td class="tdc" ${at}data-o="${c.o}">${esc(nm(c.o))}</td>`;
+    return `<td class="tdc ov" ${at}data-o="${c.o}"><s class="m">${esc(nm(c.o))}</s><br>${e.s?`<b class="sb">${esc(nm(e.s))}</b>`:`<span class="m">${e.m?"منقول إلى "+fs(e.m):"غائب"}</span>`}</td>`}
+  return `<td class="tdc ov" ${at}data-x="${c.x}"><b class="sb">${esc(nm(c.x))}</b><br><span class="m">${c.mv?"منقول من "+fs(c.mv):"إضافة"}</span></td>`}
+function tbl(R){const C=R.map(r=>cells(r.d,r.sh)),mx=Math.max(1,...C.map(c=>c.length));
+  return `<div style="overflow-x:auto"><table class="tb"><tr><th>اليوم</th><th>المناوبة</th><th colspan="${mx}">الممرضون</th></tr>`+
+  R.map((r,i)=>`<tr>${r.dl||""}<td><b>${esc(r.n)}</b><br><span class="m">${r.t}</span><br><button class="d" style="color:var(--ac)" data-a="xa" data-d="${r.d}" data-s="${r.sh}">＋ إضافة</button></td>${C[i].map(c=>tdc(r.d,r.sh,c)).join("")}${"<td></td>".repeat(mx-C[i].length)}</tr>`).join("")+`</table></div>`}
+function editor(){if(!ed)return"";const {d,s}=ed,a=S.ov[d+"|"+s]||[],sn=s==="h"?"مناوبة العطلة":shn(s);
+  const inRow=cells(d,s).map(c=>c.o||c.x),free='<option value="">اختر ممرض/ة</option>'+S.nurses.filter(n=>act(n,d)&&!inRow.includes(n.id)).map(n=>`<option value="${n.id}">${esc(n.name)}</option>`).join("");
+  let h=`<div class="card" style="border-color:var(--ac)"><h2>${fd(d)} — ${esc(sn)}</h2>`;
+  if(ed.add)h+=`<div class="row"><select id="es">${free}</select><button class="f0" data-a="addx">إضافة</button></div>`;
+  else if(ed.x)h+=`<div><b>${esc(nm(ed.x))}</b> (إضافة)</div><button class="s" data-a="delx" style="margin-top:6px">حذف الإضافة</button>`;
+  else{const e=a.find(x=>x.o===ed.o);h+=`<div><b>${esc(nm(ed.o))}</b>${e?" — معدَّل":""}</div><div class="row" style="margin-top:6px"><select id="es">${free}</select><button class="f0" data-a="sub">تعذّر + بديل</button></div>
+<div class="row"><button class="s" data-a="abs">تعذّر بدون بديل</button>${e?'<button class="s" data-a="rev">رجوع للأساسي</button>':""}</div>
+<div class="row"><input type="date" id="mv"><button class="f0" data-a="mv">نقل لهذا التاريخ</button></div>`}
+  return h+`<button class="s" data-a="cl" style="margin-top:8px">إغلاق</button></div>`}
+function unmv(d,s,o){const e=(S.ov[d+"|"+s]||[]).find(x=>x.o===o);if(e&&e.m)upd(e.m+"|"+s,a=>a.filter(x=>!(!x.o&&x.s===o&&x.mv===d)))}
+
+/* ---- الواجهات ---- */
+function render(){
+  $("tabs").innerHTML=[["n","الممرضون"],["d","اليومي"],["h","جمعة وسبت"],["r","تقرير"],["s","إعدادات"]].map(([k,t])=>`<button data-t="${k}" class="${tab===k?"on":""}">${t}</button>`).join("");
+  $("v").innerHTML={n:vN,d:vD,h:vH,r:vR,s:vS}[tab]();
+}
+function vN(){const e=dr||S.nurses.find(n=>n.id===en)||{type:"d",days:[0,1,2,3,4]},ty=e.type||"d",dys=e.days||[],dl=ty==="h"?[5,6]:[0,1,2,3,4,5,6];
+return `<div class="card"><h2>${en?"تعديل بيانات":"إضافة ممرض/ة"}</h2>
+<div class="row"><input type="text" id="nn" placeholder="الاسم" value="${esc(e.name||"")}"></div>
+<div class="row"><input type="text" id="nh" placeholder="السكن" value="${esc(e.home||"")}"></div>
+<div class="row"><input type="tel" id="np" dir="ltr" placeholder="رقم الهاتف" value="${esc(e.phone||"")}"><input type="tel" id="nw" dir="ltr" placeholder="رقم الواتساب" value="${esc(e.wa||"")}"></div>
+<div class="row"><select id="nm"><option value="">الحالة الاجتماعية</option>${["أعزب/عزباء","متزوج/ة","مطلق/ة","أرمل/ة"].map(x=>`<option ${e.ms===x?"selected":""}>${x}</option>`).join("")}</select></div>
+<div class="row"><label class="f0 m">تاريخ الالتحاق بالقسم</label><input type="date" id="njs" value="${e.js||""}"></div>
+<div class="row"><label class="f0 m">تاريخ نهاية الالتحاق</label><input type="date" id="nje" value="${e.je||""}"></div>
+<div class="row"><label class="f0 m">نوع المناوبة</label><select id="nt"><option value="d" ${ty==="d"?"selected":""}>يومي</option><option value="h" ${ty==="h"?"selected":""}>جمعة وسبت</option></select>${ty==="d"?`<select id="nsh">${S.shifts.map(s=>`<option value="${s.id}" ${e.shift===s.id?"selected":""}>${esc(s.n)}</option>`).join("")}</select>`:""}</div>
+<div class="m">أيام المناوبة</div><div style="margin-bottom:8px">${dl.map(i=>`<label class="chk"><input type="checkbox" class="dy" value="${i}" ${dys.includes(i)?"checked":""}>${DN[i]}</label>`).join("")}</div>
+<div class="row"><button data-a="addn">${en?"حفظ التعديل":"إضافة"}</button>${en?'<button class="s" data-a="cnn">إلغاء</button>':""}</div></div>
+<div class="card"><h2>الطاقم (${S.nurses.length})</h2><input type="text" id="qs" placeholder="بحث بالاسم" value="${esc(qs)}" style="margin-bottom:8px">
+${S.nurses.filter(n=>n.name.includes(qs.trim())).map(n=>`<div class="ln"><div class="row" style="margin:0"><b>${esc(n.name)}</b><span class="f0"><button class="d" data-a="edn" data-id="${n.id}" style="color:var(--ac)">تعديل</button><button class="d" data-a="deln" data-id="${n.id}">حذف</button></span></div>
+<div class="m">${n.type==="d"?"المناوبة: "+esc(shn(n.shift))+" • "+(n.days||[]).map(i=>DN[i]).join("، "):n.type==="h"?"المناوبة: جمعة وسبت • "+(n.days||[]).map(i=>DN[i]).join("، "):"تنبيه: لم تُحدد المناوبة"}</div>
+<div class="m">${[n.home&&"السكن: "+esc(n.home),n.ms&&"الحالة: "+esc(n.ms),n.phone&&""+esc(n.phone)].filter(Boolean).join(" • ")}</div>
+<div class="m">${n.js||n.je?""+(n.js?"التحاق: "+fd2(n.js):"")+(n.je?" • نهاية: "+fd2(n.je):""):""}${n.je&&n.je<ds(new Date())?' <b style="color:var(--dg)">(منتهي)</b>':""}</div>
+<div class="row" style="margin:6px 0 0">${n.phone?`<a class="btn" href="tel:${String(n.phone).replace(/[^\d+]/g,"")}">اتصال</a>`:""}${n.wa||n.phone?`<a class="btn" target="_blank" rel="noopener" href="https://wa.me/${wa(n.wa||n.phone)}">واتساب</a>`:""}</div></div>`).join("")||'<div class="m">لا توجد أسماء</div>'}</div>`}
+
+function vD(){const R=[];
+for(let i=0;i<7;i++){const d=add(wk,i);S.shifts.forEach((s,j)=>R.push({d,sh:s.id,n:s.n,t:s.s+"→"+s.e,dl:j?"":`<td rowspan="${S.shifts.length}"><b>${DN[i]}</b><br><span class="m">${fs(d)}</span></td>`}))}
+return `<div class="card"><div class="row"><button class="s" data-a="wp">▶ السابق</button><button class="s" data-a="wt">هذا الأسبوع</button><button class="s" data-a="wn">التالي ◀</button></div>
+<div class="row"><input type="date" id="wkd" value="${wk}"></div><div class="m">الأسبوع: ${fd2(wk)} – ${fd2(add(wk,6))} • المعدَّل يظهر ملوّنًا والأساسي مشطوبًا. اضغط أي اسم للتعديل.</div></div>`+editor()+`<div class="card" style="padding:6px">${tbl(R)}</div>`}
+
+function vH(){const [y,m]=hmn.split("-").map(Number),R=[],st=new Date(y,m-1,1),nx=new Date(y,m,1),cnt={};
+S.nurses.filter(n=>n.type==="h").forEach(n=>cnt[n.id]=0);Object.keys(S.hol).forEach(k=>S.hol[k].forEach(id=>{if(id in cnt)cnt[id]++}));
+for(let d=new Date(st);d<nx;d.setDate(d.getDate()+1)){const w=d.getDay();if(w===5||w===6){const k=ds(d);R.push({d:k,sh:"h",n:"مناوبة العطلة",t:S.hs+"→"+S.he,dl:`<td><b>${DN[w]}</b><br><span class="m">${fs(k)}</span></td>`})}}
+return `<div class="card"><div class="row"><label class="f0">الشهر</label><input type="month" id="hmn" value="${hmn}"></div><div class="m">الأساسي مشطوب عند التعديل. اضغط أي اسم للتعذّر/البديل/النقل.</div></div>`+editor()+`<div class="card" style="padding:6px">${tbl(R)}</div>
+<div class="card"><h2>توزيع التناوب على عدة أشهر</h2><div class="m">يُوزَّع الممرضون المسجَّلون كـ"جمعة وسبت" بعدالة حسب الأيام المحددة لكل منهم.</div>
+<div class="row" style="margin-top:8px"><label class="f0">من شهر</label><input type="month" id="gm" value="${gm}"><label class="f0">الأشهر</label><input type="number" id="gc" min="1" max="12" value="${gc}"></div>
+<div class="row"><button data-a="genh">توزيع</button><button class="s" data-a="clrh">مسح الكل</button></div></div>
+<div class="card"><h2>إضافة مناوبة للأساس</h2><div class="row"><select id="hn"><option value="">اختر الممرض/ة</option>${S.nurses.map(n=>`<option value="${n.id}">${esc(n.name)}</option>`).join("")}</select><input type="date" id="hd"></div><button data-a="addhd" style="width:100%">إضافة</button></div>
+<div class="card"><h2>عدد المناوبات</h2>${S.nurses.filter(n=>n.type==="h").map(n=>`<span class="chip">${esc(n.name)}: ${cnt[n.id]}</span>`).join("")||'<span class="m">لا يوجد ممرضون من نوع جمعة وسبت</span>'}</div>`}
+
+const TD=()=>ds(new Date());
+const stt=n=>!n.js&&!n.je?"—":n.je&&n.je<TD()?"منتهي":n.js&&n.js>TD()?"لم يبدأ":"على رأس العمل";
+function dur(n){if(!n.js)return"—";const e=n.je&&n.je<TD()?n.je:TD();const d=Math.max(0,Math.round((pd(e)-pd(n.js))/864e5)),m=Math.floor(d/30.44);return m?m+" ش "+Math.round(d-m*30.44)+" ي":d+" ي"}
+function repL(){const {f,t,s}=rq,inr=d=>d&&(!f||d>=f)&&(!t||d<=t);let L=S.nurses.filter(n=>n.name.includes(qs.trim()));
+if(s==="j")L=L.filter(n=>inr(n.js));else if(s==="e")L=L.filter(n=>inr(n.je));else if(s==="a")L=L.filter(n=>(!t||!n.js||n.js<=t)&&(!f||!n.je||n.je>=f));
+return L.sort((a,b)=>(a.js||"9").localeCompare(b.js||"9"))}
+function vR(){const {f,t,s}=rq,L=repL(),c=x=>S.nurses.filter(n=>stt(n)===x).length,so=(v,l)=>`<option value="${v}" ${s===v?"selected":""}>${l}</option>`;
+return `<div class="card"><h2>تقرير الالتحاق بالقسم</h2><input type="text" id="qs" placeholder="بحث بالاسم" value="${esc(qs)}" style="margin-bottom:8px">
+<div class="row"><select id="rs">${so("","الكل")}${so("j","التحقوا خلال الفترة")}${so("e","انتهى التحاقهم خلال الفترة")}${so("a","على رأس العمل خلال الفترة")}</select></div>
+<div class="row"><label class="f0 m">من</label><input type="date" id="rf" value="${f}"><label class="f0 m">إلى</label><input type="date" id="rt" value="${t}"></div>
+<div class="m">الإجمالي ${S.nurses.length} • على رأس العمل ${c("على رأس العمل")} • منتهي ${c("منتهي")} • لم يبدأ ${c("لم يبدأ")}</div></div>
+<div class="card"><div class="row"><h2 style="margin:0">النتائج (${L.length})</h2><button class="s f0" data-a="cpr">نسخ التقرير</button></div><div style="overflow-x:auto"><table class="r"><tr><th>الاسم</th><th>الالتحاق</th><th>النهاية</th><th>المدة</th><th>الحالة</th></tr>${L.map(n=>`<tr><td>${esc(n.name)}</td><td>${n.js?fd2(n.js):"—"}</td><td>${n.je?fd2(n.je):"—"}</td><td>${dur(n)}</td><td style="color:${stt(n)==="منتهي"?"var(--dg)":"inherit"}">${stt(n)}</td></tr>`).join("")||'<tr><td colspan="5" class="m">لا نتائج</td></tr>'}</table></div></div>`}
+
+function vS(){return `<div class="card"><h2>الورديات اليومية</h2>${S.shifts.map((sh,i)=>`<div class="ln"><div class="row"><input type="text" value="${esc(sh.n)}" data-f="n" data-i="${i}"><button class="d f0" data-a="delsh" data-i="${i}">حذف</button></div><div class="row"><input type="time" value="${sh.s}" data-f="s" data-i="${i}"><input type="time" value="${sh.e}" data-f="e" data-i="${i}"></div></div>`).join("")}<button class="s" data-a="addsh">+ وردية</button></div>
+<div class="card"><h2>مناوبة الجمعة والسبت</h2><div class="row"><label class="f0">البداية</label><input type="time" id="hs" value="${S.hs}"><label class="f0">النهاية</label><input type="time" id="he" value="${S.he}"><label class="f0">العدد</label><input type="number" id="hk" min="1" value="${S.hk}"></div></div>
+<div class="card"><h2>مفتاح الدولة للواتساب</h2><div class="m">لتحويل الأرقام التي تبدأ بصفر (مثال: 966 أو 967 أو 20)</div><div class="row" style="margin-top:6px"><input type="tel" id="cc" dir="ltr" placeholder="966" value="${esc(S.cc||"")}"></div></div>
+<div class="card"><h2>نسخة احتياطية مشفّرة</h2><div class="m">الملف مشفّر بكلمة مرورك ويحمل ترخيص هذا الجهاز. احفظه خارج الجوال (واتساب/Drive). بعد إعادة التثبيت اضغط "استرجاع من نسخة احتياطية".</div><div class="row" style="margin-top:8px"><button data-a="bk">حفظ / مشاركة</button><button class="s" data-a="pick">استرجاع من ملف</button></div><input type="file" id="rfile" hidden></div>`}
+
+function rf(){return{name:$("nn").value.trim(),home:$("nh").value.trim(),phone:$("np").value.trim(),wa:$("nw").value.trim(),ms:$("nm").value,js:$("njs").value,je:$("nje").value,type:$("nt").value,shift:$("nsh")?$("nsh").value:"",days:[...document.querySelectorAll(".dy:checked")].map(x=>+x.value)}}
+function genh(){const [y,m]=gm.split("-").map(Number),st=new Date(y,m-1,1),nx=new Date(y,m-1+gc,1),dates=[];
+for(let d=new Date(st);d<nx;d.setDate(d.getDate()+1))if(d.getDay()===5||d.getDay()===6)dates.push(ds(d));
+const P=S.nurses.filter(n=>n.type==="h");if(!P.length)return toast("أضف ممرضين من نوع جمعة وسبت أولًا");
+const cnt={};P.forEach(n=>cnt[n.id]=0);Object.keys(S.hol).forEach(k=>{if(k<dates[0]||k>=ds(nx))S.hol[k].forEach(id=>{if(id in cnt)cnt[id]++})});
+dates.forEach(k=>{delete S.hol[k];delete S.ov[k+"|h"]});
+dates.forEach(k=>{const w=pd(k).getDay(),prev=S.hol[add(k,-1)]||[];
+const pick=P.map((n,i)=>({id:n.id,i,n})).filter(x=>(x.n.days||[5,6]).includes(w)&&act(x.n,k)).sort((a,b)=>(cnt[a.id]-cnt[b.id])||((prev.includes(a.id)?1:0)-(prev.includes(b.id)?1:0))||(a.i-b.i)).slice(0,S.hk).map(x=>x.id);
+pick.forEach(id=>cnt[id]++);if(pick.length)S.hol[k]=pick});
+hmn=gm;save();render();toast("تم التوزيع ✓")}
+
+document.addEventListener("click",e=>{const t=e.target,a=t.dataset.a,D=t.dataset;
+if(D.t){tab=D.t;qs="";ed=null;render();return}
+if(!a)return;
+if(a==="cpd"){(navigator.clipboard?navigator.clipboard.writeText(DEVC):Promise.reject()).then(()=>toast("تم نسخ الرمز"),()=>toast("انسخه يدويًا"))}
+else if(a==="pick"){$("rfile").click()}
+else if(a==="bk"){shareBk()}
+else if(a==="act"){localStorage.setItem("lic",$("sn").value.replace(/\s/g,""));licOK().then(ok=>{if(ok){toast("تم التفعيل ✓");boot()}else{localStorage.removeItem("lic");toast("رقم تسلسلي غير صحيح")}})}
+else if(a==="mkpw"){const p=$("pw").value;if(p.length<6)return toast("6 أحرف على الأقل");if($("pw2").value!==p)return toast("كلمتا المرور غير متطابقتين");
+ SALT=crypto.getRandomValues(new Uint8Array(16));mkKey(p,SALT).then(k=>{CK=k;S=clone(D0);tab="n";return vaultSave()}).then(render)}
+else if(a==="unl"){try{const v=JSON.parse(localStorage.getItem("vault"));SALT=unb(v.s);
+ mkKey($("pw").value,SALT).then(k=>crypto.subtle.decrypt({name:"AES-GCM",iv:unb(v.i)},k,unb(v.c)).then(d=>{CK=k;S=Object.assign(clone(D0),JSON.parse(td.decode(d)));if(!S.ov)S.ov={};if(!S.hol)S.hol={};tab="n";render()})).catch(()=>toast("كلمة المرور خاطئة"))}catch(x){toast("تعذّر الفتح")}}
+else  if(a==="addn"){const o=rf();if(!o.name)return toast("اكتب الاسم");if(!o.days.length)return toast("حدد أيام المناوبة");if(o.type==="d"&&!o.shift)return toast("حدد الوردية");if(o.type==="h")o.shift="";
+ if(en){Object.assign(S.nurses.find(n=>n.id===en),o);en=null}else S.nurses.push(Object.assign({id:uid()},o));dr=null;save();render();toast("تم الحفظ ✓")}
+else if(a==="edn"){en=D.id;dr=null;render();scrollTo({top:0,behavior:"smooth"})}
+else if(a==="cnn"){en=null;dr=null;render()}
+else if(a==="deln"){if(confirm("حذف هذا الاسم؟")){S.nurses=S.nurses.filter(n=>n.id!==D.id);save();render()}}
+else if(a==="wp"){wk=add(wk,-7);ed=null;render()}
+else if(a==="wn"){wk=add(wk,7);ed=null;render()}
+else if(a==="wt"){wk=sun(TD());ed=null;render()}
+else if(a==="ce"){ed={d:D.d,s:D.s,o:D.o,x:D.x};render();scrollTo({top:0,behavior:"smooth"})}
+else if(a==="xa"){ed={d:D.d,s:D.s,add:1};render();scrollTo({top:0,behavior:"smooth"})}
+else if(a==="cl"){ed=null;render()}
+else if(ed&&["sub","abs","rev","mv","delx","addx"].includes(a)){const {d,s,o,x}=ed,k=d+"|"+s;let ok=true;
+ if(a==="sub"){const v=$("es").value;if(!v)return toast("اختر البديل");unmv(d,s,o);upd(k,r=>r.filter(z=>z.o!==o).concat({o,s:v}))}
+ else if(a==="abs"){unmv(d,s,o);upd(k,r=>r.filter(z=>z.o!==o).concat({o,s:null}))}
+ else if(a==="rev"){unmv(d,s,o);upd(k,r=>r.filter(z=>z.o!==o))}
+ else if(a==="mv"){const td=$("mv").value;if(!td||td===d)return toast("اختر تاريخًا آخر");if(s==="h"&&![5,6].includes(pd(td).getDay()))return toast("اختر جمعة أو سبتًا");
+  unmv(d,s,o);upd(k,r=>r.filter(z=>z.o!==o).concat({o,s:null,m:td}));upd(td+"|"+s,r=>r.concat({o:null,s:o,mv:d}))}
+ else if(a==="delx"){const ex=(S.ov[k]||[]).find(z=>!z.o&&z.s===x);if(ex&&ex.mv)upd(ex.mv+"|"+s,r=>r.filter(z=>z.o!==x));upd(k,r=>r.filter(z=>!(!z.o&&z.s===x)))}
+ else if(a==="addx"){const v=$("es").value;if(!v)return toast("اختر الممرض/ة");upd(k,r=>r.concat({o:null,s:v}))}
+ ed=null;save();render();toast("تم ✓")}
+else if(a==="genh"){gm=$("gm").value;gc=Math.max(1,Math.min(12,+$("gc").value||1));if(!gm)return toast("اختر الشهر");genh()}
+else if(a==="clrh"){if(confirm("مسح الأساسي والتعديلات لجمعة وسبت؟")){S.hol={};Object.keys(S.ov).forEach(k=>{if(k.endsWith("|h"))delete S.ov[k]});save();render()}}
+else if(a==="addhd"){const id=$("hn").value,d=$("hd").value;if(!id||!d)return toast("اختر الممرض/ة والتاريخ");const w=pd(d).getDay();if(w!==5&&w!==6)return toast("اختر يوم جمعة أو سبت");
+ if(!act(S.nurses.find(x=>x.id===id),d))return toast("التاريخ خارج فترة التحاقه");const r=S.hol[d]=S.hol[d]||[];if(r.includes(id))return toast("مضاف مسبقًا");r.push(id);hmn=d.slice(0,7);save();render();toast("تمت الإضافة ✓")}
+else if(a==="addsh"){S.shifts.push({id:uid(),n:"وردية جديدة",s:"08:00",e:"16:00"});save();render()}
+else if(a==="delsh"){if(confirm("حذف الوردية؟")){S.shifts.splice(+D.i,1);save();render()}}
+else if(a==="cpr"){const l=repL().map(n=>[n.name,n.js||"-",n.je||"-",dur(n),stt(n)].join(" | ")).join("\n");(navigator.clipboard?navigator.clipboard.writeText(l):Promise.reject()).then(()=>toast("تم نسخ التقرير"),()=>toast("تعذّر النسخ"))}
+else if(a==="exp"){const s=JSON.stringify(S);$("bk").value=s;$("bk").select();(navigator.clipboard?navigator.clipboard.writeText(s):Promise.reject()).then(()=>toast("تم النسخ — احفظه في مكان آمن"),()=>toast("حدد النص وانسخه يدويًا"))}
+else if(a==="imp"){try{const o=JSON.parse($("bk").value);if(!Array.isArray(o.nurses))throw 0;if(confirm("استبدال كل البيانات الحالية؟")){S=Object.assign(clone(D0),o);save();render();toast("تم الاسترجاع ✓")}}catch(x){toast("النص غير صالح")}}
+});
+document.addEventListener("change",e=>{const t=e.target,i=t.id;
+if(i==="rfile"){if(t.files[0])restoreFile(t.files[0])}
+else if(i==="nt"){dr=rf();dr.days=dr.type==="h"?[5,6]:[0,1,2,3,4];render()}
+else if(i==="wkd"){wk=sun(t.value||wk);ed=null;render()}
+else if(i==="hmn"){hmn=t.value||hmn;ed=null;render()}
+else if(i==="rf"||i==="rt"){rq[i==="rf"?"f":"t"]=t.value;render()}
+else if(i==="rs"){rq.s=t.value;render()}
+else if(t.dataset.f){S.shifts[+t.dataset.i][t.dataset.f]=t.value;save()}
+else if(["hs","he","hk","cc"].includes(i)){S[i]=i==="hk"?Math.max(1,+t.value||1):t.value;save()}
+});
+document.addEventListener("input",e=>{if(e.target.id==="qs"){qs=e.target.value;render();const i=$("qs");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}});
+/* ---- الأمان: ترخيص بتوقيع رقمي + تشفير البيانات AES-256 ---- */
+const PUB={"kty":"EC","crv":"P-256","x":"Ae6lr3jNxNkoFSeqY03VBGZVp0F9flymdqM0oDa4Mik","y":"07UOvOowCPfaSL1Tvh0X6-SWGqQnG1kmmqZbwy2ekyA","ext":true,"key_ops":["verify"]}; /* الصق هنا المفتاح العام (JWK) من tools/license-tool.html */
+const te=new TextEncoder(),td=new TextDecoder();
+const b64=u=>{let s="";for(const x of new Uint8Array(u))s+=String.fromCharCode(x);return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")};
+const unb=s=>Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/")),c=>c.charCodeAt(0));
+let CK=null,SALT=null,DEVC="";
+let DERR="",DFB=false;
+async function devCode(){let id="";const C=window.Capacitor,nat=!!window.NRSID||!!(C&&C.isNativePlatform&&C.isNativePlatform());
+DERR="v4 nat="+(nat?1:0)+" js="+(window.NRSID?1:0);
+try{if(window.NRSID)id=String(NRSID.get()||"")}catch(e){DERR+=" a:"+e}
+if(nat&&!id){try{id=(await C.registerPlugin("NrsId").getId()).id||""}catch(e){DERR+=" b:"+((e&&e.message)||e)}}
+if(nat&&!id){try{id=(await C.registerPlugin("Device").getId()).identifier||""}catch(e){DERR+=" c:"+((e&&e.message)||e)}}
+if(!id){DFB=nat;id=localStorage.getItem("did");if(!id){id=b64(crypto.getRandomValues(new Uint8Array(12)));localStorage.setItem("did",id)}}
+const h=new Uint8Array(await crypto.subtle.digest("SHA-256",te.encode("nrs|"+id)));
+return [...h.slice(0,8)].map(x=>x.toString(16).padStart(2,"0")).join("").toUpperCase()}
+async function licOK(){try{const l=localStorage.getItem("lic");if(!l||!PUB)return false;
+const k=await crypto.subtle.importKey("jwk",PUB,{name:"ECDSA",namedCurve:"P-256"},false,["verify"]);
+return await crypto.subtle.verify({name:"ECDSA",hash:"SHA-256"},k,unb(l),te.encode(DEVC))}catch(e){return false}}
+async function mkKey(pw,salt){const b=await crypto.subtle.importKey("raw",te.encode(pw),"PBKDF2",false,["deriveKey"]);
+return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:210000,hash:"SHA-256"},b,{name:"AES-GCM",length:256},false,["encrypt","decrypt"])}
+async function vaultSave(){if(!CK)return;try{const iv=crypto.getRandomValues(new Uint8Array(12)),c=await crypto.subtle.encrypt({name:"AES-GCM",iv},CK,te.encode(JSON.stringify(S)));
+localStorage.setItem("vault",JSON.stringify({s:b64(SALT),i:b64(iv),c:b64(c)}))}catch(e){toast("تعذّر الحفظ")}}
+function save(){vaultSave()}
+function gate(m){$("tabs").innerHTML="";let h;
+if(m==="a")h=`<h2>تفعيل التطبيق</h2><div class="m">أرسل رمز الجهاز للمطوّر ليعطيك الرقم التسلسلي</div><div style="font-size:22px;font-weight:700;direction:ltr;text-align:center;margin:12px 0;letter-spacing:2px">${DEVC.replace(/(.{4})(?=.)/g,"$1-")}</div><button class="s" data-a="cpd" style="width:100%">نسخ الرمز</button><textarea id="sn" dir="ltr" placeholder="الرقم التسلسلي" style="margin-top:8px;min-height:70px;font-size:12px"></textarea><button data-a="act" style="width:100%;margin-top:8px">تفعيل</button><div class="m" dir="ltr" style="margin-top:8px;${DFB?"color:var(--dg)":""}">${DFB?"TEMP device id (may change on reinstall) ":""}${esc(DERR)}</div>`;
+else h=`<h2>${m==="c"?"إنشاء كلمة مرور":"فتح التطبيق"}</h2><div class="m">${m==="c"?"تُشفَّر بياناتك بها. إذا نسيتها لا يمكن استرجاعها (احتفظ بنسخة احتياطية).":"أدخل كلمة المرور"}</div><input type="password" id="pw" placeholder="كلمة المرور" style="margin-bottom:8px">${m==="c"?'<input type="password" id="pw2" placeholder="تأكيد كلمة المرور" style="margin-bottom:8px">':""}<button data-a="${m==="c"?"mkpw":"unl"}" style="width:100%">${m==="c"?"حفظ":"فتح"}</button>`;
+$("v").innerHTML=`<div class="card">${h}<button class="s" data-a="pick" style="width:100%;margin-top:8px">استرجاع من نسخة احتياطية</button><input type="file" id="rfile" hidden></div>`}
+async function shareBk(){const o=JSON.stringify({t:"nrs1",v:JSON.parse(localStorage.getItem("vault")||"null"),l:localStorage.getItem("lic")||""});
+try{const r=await Capacitor.registerPlugin("Filesystem").writeFile({path:"backup-"+ds(new Date())+".nrs",data:o,directory:"CACHE",encoding:"utf8"});
+await Capacitor.registerPlugin("Share").share({title:"نسخة احتياطية - سجل الورديات",files:[r.uri]})}
+catch(e){if(/cancel/i.test(String((e&&e.message)||e)))return;try{await navigator.clipboard.writeText(o);toast("تم نسخ النسخة الاحتياطية كنص")}catch(x){toast("تعذّر إنشاء النسخة")}}}
+function restoreFile(f){const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);if(o.t!=="nrs1"||!o.v)throw 0;localStorage.setItem("vault",JSON.stringify(o.v));if(o.l)localStorage.setItem("lic",o.l);CK=null;S=clone(D0);toast("تم الاسترجاع — أدخل كلمة المرور");boot()}catch(e){toast("ملف غير صالح")}};r.readAsText(f)}
+async function boot(){gate(localStorage.getItem("vault")?"u":"c")}
+let HT=0;document.addEventListener("visibilitychange",()=>{if(document.hidden)HT=Date.now();else if(CK&&HT&&Date.now()-HT>6e4){CK=null;S=clone(D0);ed=null;dr=null;gate("u")}});
+boot();
+</script>
+</body>
+</html>

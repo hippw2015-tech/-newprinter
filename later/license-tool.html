@@ -1,0 +1,32 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>أداة الترخيص</title>
+<style>body{font-family:system-ui,Tahoma,sans-serif;max-width:520px;margin:auto;padding:16px;background:#f6f5f1;color:#1d1d1b}.c{background:#fff;border:1px solid #ddd;border-radius:12px;padding:14px;margin-bottom:12px}textarea,input{width:100%;font:inherit;padding:10px;border:1px solid #ccc;border-radius:8px;direction:ltr;margin:6px 0;box-sizing:border-box}button{width:100%;font:inherit;padding:10px;border:0;border-radius:8px;background:#be185d;color:#fff;font-weight:600;margin-top:4px}.w{color:#b42318;font-size:13px}.m{font-size:13px;color:#555}</style></head><body>
+<div class="c"><h3>عبارة المرور السرية</h3><div class="w">مفتاحك يُشتق من هذه العبارة دائمًا بنفس النتيجة: لا يُحفظ شيء هنا ولا يضيع. استخدم عبارة طويلة عشوائية (5 كلمات فأكثر) واحفظها في مكان آمن. من يعرفها يستطيع توليد تراخيص.</div>
+<input id="pp" type="password" placeholder="عبارة المرور (12 حرفًا فأكثر)"></div>
+<div class="c"><h3>1) المفتاح العام (مرة واحدة)</h3><div class="m">انسخ السطر الناتج واستبدل به السطر <b>const PUB=null;</b> في www/index.html</div><button id="a">اشتقاق المفتاح العام</button><textarea id="o1" rows="4" readonly></textarea></div>
+<div class="c"><h3>2) توليد رقم تسلسلي لجهاز</h3><input id="dc" placeholder="رمز الجهاز (16 خانة)"><button id="b">توليد الرقم التسلسلي</button><textarea id="o2" rows="3" readonly></textarea><button id="cp">نسخ</button></div>
+<script>
+const te=new TextEncoder();
+const b64=u=>{let s="";for(const x of new Uint8Array(u))s+=String.fromCharCode(x);return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")};
+const P=2n**256n-2n**224n+2n**192n+2n**96n-1n,N=0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551n;
+const G=[0x6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296n,0x4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5n];
+const md=a=>((a%P)+P)%P;
+const pw=(b,e)=>{let r=1n;b=md(b);while(e>0n){if(e&1n)r=r*b%P;b=b*b%P;e>>=1n}return r};
+const inv=a=>pw(a,P-2n);
+function padd(A,B){if(!A)return B;if(!B)return A;const [x1,y1]=A,[x2,y2]=B;let l;
+if(x1===x2){if(md(y1+y2)===0n)return null;l=md(3n*x1*x1-3n)*inv(2n*y1)%P}else l=md(y2-y1)*inv(x2-x1)%P;
+const x3=md(l*l-x1-x2);return[x3,md(l*(x1-x3)-y1)]}
+function mul(k,Q){let R=null;while(k>0n){if(k&1n)R=padd(R,Q);Q=padd(Q,Q);k>>=1n}return R}
+const b32=v=>b64(Uint8Array.from(v.toString(16).padStart(64,"0").match(/../g).map(h=>parseInt(h,16))));
+async function derive(pass){const k=await crypto.subtle.importKey("raw",te.encode(pass),"PBKDF2",false,["deriveBits"]);
+const bits=new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:te.encode("nurse-license-v1"),iterations:600000},k,256));
+const d=BigInt("0x"+[...bits].map(x=>x.toString(16).padStart(2,"0")).join(""))%(N-1n)+1n,Q=mul(d,G);
+return{prv:{kty:"EC",crv:"P-256",x:b32(Q[0]),y:b32(Q[1]),d:b32(d),ext:true},pub:{kty:"EC",crv:"P-256",x:b32(Q[0]),y:b32(Q[1]),ext:true,key_ops:["verify"]}}}
+
+const $=i=>document.getElementById(i);let cache={};
+async function keys(){const p=$("pp").value;if(p.length<12){alert("عبارة المرور 12 حرفًا على الأقل");throw 0}if(!cache[p])cache={[p]:await derive(p)};return cache[p]}
+$("a").onclick=async()=>{try{$("o1").value="جارٍ الحساب...";const k=await keys();$("o1").value="const PUB="+JSON.stringify(k.pub)+";"}catch(e){$("o1").value=""}};
+$("b").onclick=async()=>{try{const c=$("dc").value.replace(/[^0-9a-f]/gi,"").toUpperCase();if(c.length!==16)throw 0;$("o2").value="جارٍ الحساب...";
+const k=await keys(),pk=await crypto.subtle.importKey("jwk",k.prv,{name:"ECDSA",namedCurve:"P-256"},false,["sign"]);
+$("o2").value=b64(await crypto.subtle.sign({name:"ECDSA",hash:"SHA-256"},pk,te.encode(c)))}catch(e){$("o2").value="رمز غير صحيح أو عبارة قصيرة"}};
+$("cp").onclick=()=>navigator.clipboard&&navigator.clipboard.writeText($("o2").value);
+</script></body></html>
